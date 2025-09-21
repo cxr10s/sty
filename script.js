@@ -3,8 +3,264 @@ let cart = [];
 let currentCustomization = null;
 let cartTotal = 0;
 
+// Sistema de autenticación
+const authSystem = {
+    isAuthenticated: false,
+    currentUser: null,
+    users: JSON.parse(localStorage.getItem('users')) || [],
+    
+    // Inicializar sistema de autenticación
+    init() {
+        this.checkExistingAuth();
+        this.setupEventListeners();
+    },
+    
+    // Verificar si hay una sesión existente
+    checkExistingAuth() {
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+            this.currentUser = JSON.parse(savedUser);
+            this.isAuthenticated = true;
+            this.updateAuthUI();
+        }
+    },
+    
+    // Configurar event listeners
+    setupEventListeners() {
+        // Botones de Google
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.google-login-btn') || e.target.closest('.google-login-btn')) {
+                this.handleGoogleAuth('login');
+            }
+            if (e.target.matches('.google-register-btn') || e.target.closest('.google-register-btn')) {
+                this.handleGoogleAuth('register');
+            }
+            
+            // Botones de Facebook
+            if (e.target.matches('.facebook-login-btn') || e.target.closest('.facebook-login-btn')) {
+                this.handleFacebookAuth('login');
+            }
+            if (e.target.matches('.facebook-register-btn') || e.target.closest('.facebook-register-btn')) {
+                this.handleFacebookAuth('register');
+            }
+        });
+    },
+    
+    // Manejar autenticación con Google
+    handleGoogleAuth(action) {
+        this.showLoadingMessage('Abriendo Google...');
+        
+        // Simular detección de app de Google
+        setTimeout(() => {
+            if (this.isGoogleAppInstalled()) {
+                this.openGoogleAuth(action);
+            } else {
+                this.showNotification('No tienes la aplicación de Google instalada. Por favor, instálala desde la Play Store.');
+            }
+        }, 1000);
+    },
+    
+    // Manejar autenticación con Facebook
+    handleFacebookAuth(action) {
+        this.showLoadingMessage('Abriendo Facebook...');
+        
+        // Simular detección de app de Facebook
+        setTimeout(() => {
+            if (this.isFacebookAppInstalled()) {
+                this.openFacebookAuth(action);
+            } else {
+                this.showNotification('No tienes la aplicación de Facebook instalada, por lo tanto no puedes continuar con este método de registro.');
+            }
+        }, 1000);
+    },
+    
+    // Simular detección de app de Google (en un entorno real, esto se haría con deep links)
+    isGoogleAppInstalled() {
+        // En un entorno real, esto verificaría si la app está instalada
+        // Por ahora, simulamos que está instalada
+        return true;
+    },
+    
+    // Simular detección de app de Facebook
+    isFacebookAppInstalled() {
+        // En un entorno real, esto verificaría si la app está instalada
+        // Por ahora, simulamos que está instalada
+        return true;
+    },
+    
+    // Abrir autenticación de Google
+    openGoogleAuth(action) {
+        // Simular proceso de autenticación con Google
+        setTimeout(() => {
+            const userData = this.simulateGoogleAuth();
+            this.processAuthResult(userData, action, 'Google');
+        }, 2000);
+    },
+    
+    // Abrir autenticación de Facebook
+    openFacebookAuth(action) {
+        // Simular proceso de autenticación con Facebook
+        setTimeout(() => {
+            const userData = this.simulateFacebookAuth();
+            this.processAuthResult(userData, action, 'Facebook');
+        }, 2000);
+    },
+    
+    // Simular datos de Google
+    simulateGoogleAuth() {
+        return {
+            id: 'google_' + Date.now(),
+            name: 'Usuario Google',
+            email: 'usuario@gmail.com',
+            photo: 'https://via.placeholder.com/100x100?text=G',
+            provider: 'Google'
+        };
+    },
+    
+    // Simular datos de Facebook
+    simulateFacebookAuth() {
+        return {
+            id: 'facebook_' + Date.now(),
+            name: 'Usuario Facebook',
+            email: 'usuario@facebook.com',
+            photo: 'https://via.placeholder.com/100x100?text=F',
+            provider: 'Facebook'
+        };
+    },
+    
+    // Procesar resultado de autenticación
+    processAuthResult(userData, action, provider) {
+        const existingUser = this.users.find(user => user.email === userData.email);
+        
+        if (existingUser) {
+            // Usuario existente - hacer login
+            this.currentUser = existingUser;
+            this.isAuthenticated = true;
+            this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
+        } else {
+            // Nuevo usuario - crear cuenta
+            const newUser = {
+                ...userData,
+                id: userData.id,
+                createdAt: new Date().toISOString(),
+                orders: []
+            };
+            
+            this.users.push(newUser);
+            this.currentUser = newUser;
+            this.isAuthenticated = true;
+            this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+        }
+        
+        // Guardar datos
+        localStorage.setItem('users', JSON.stringify(this.users));
+        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        
+        // Actualizar UI
+        this.updateAuthUI();
+        this.closeAuthModals();
+    },
+    
+    // Actualizar interfaz de autenticación
+    updateAuthUI() {
+        const loginBtn = document.querySelector('.login-btn');
+        const registerBtn = document.querySelector('.register-btn');
+        const userInfo = document.querySelector('.user-info');
+        
+        if (this.isAuthenticated) {
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (registerBtn) registerBtn.style.display = 'none';
+            
+            if (userInfo) {
+                userInfo.style.display = 'flex';
+                userInfo.innerHTML = `
+                    <img src="${this.currentUser.photo}" alt="Foto de perfil" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 10px;">
+                    <span>Hola, ${this.currentUser.name}</span>
+                    <button onclick="authSystem.logout()" style="margin-left: 10px; padding: 5px 10px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer;">Cerrar Sesión</button>
+                `;
+            }
+        } else {
+            if (loginBtn) loginBtn.style.display = 'block';
+            if (registerBtn) registerBtn.style.display = 'block';
+            if (userInfo) userInfo.style.display = 'none';
+        }
+    },
+    
+    // Cerrar sesión
+    logout() {
+        this.isAuthenticated = false;
+        this.currentUser = null;
+        localStorage.removeItem('currentUser');
+        this.updateAuthUI();
+        this.showNotification('Sesión cerrada exitosamente');
+    },
+    
+    // Cerrar modales de autenticación
+    closeAuthModals() {
+        const loginModal = document.getElementById('login-modal');
+        const registerModal = document.getElementById('register-modal');
+        const overlay = document.getElementById('modal-overlay');
+        
+        if (loginModal) loginModal.classList.remove('show');
+        if (registerModal) registerModal.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+    },
+    
+    // Mostrar modal de login
+    showLoginModal() {
+        const modal = document.getElementById('login-modal');
+        const overlay = document.getElementById('modal-overlay');
+        
+        if (modal && overlay) {
+            modal.classList.add('show');
+            overlay.classList.add('show');
+        }
+    },
+    
+    // Mostrar modal de registro
+    showRegisterModal() {
+        const modal = document.getElementById('register-modal');
+        const overlay = document.getElementById('modal-overlay');
+        
+        if (modal && overlay) {
+            modal.classList.add('show');
+            overlay.classList.add('show');
+        }
+    },
+    
+    // Mostrar mensaje de carga
+    showLoadingMessage(message) {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.id = 'auth-loading';
+        loadingDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: 600;
+        `;
+        loadingDiv.textContent = message;
+        document.body.appendChild(loadingDiv);
+        
+        setTimeout(() => {
+            if (loadingDiv.parentNode) {
+                loadingDiv.parentNode.removeChild(loadingDiv);
+            }
+        }, 2000);
+    }
+};
+
 // Funcionalidad de navegación móvil
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar sistema de autenticación
+    authSystem.init();
+    
     const navToggle = document.querySelector('.nav-toggle');
     const navMenu = document.querySelector('.nav-menu');
     
@@ -645,7 +901,7 @@ function proceedToCheckout() {
     }
     
     // Verificar si el usuario está autenticado
-    if (typeof authSystem !== 'undefined' && !authSystem.isAuthenticated) {
+    if (!authSystem.isAuthenticated) {
         showNotification('Debes iniciar sesión para proceder al pago');
         authSystem.showLoginModal();
         return;
@@ -793,4 +1049,98 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.transform = 'translateY(0) scale(1)';
         });
     });
+    
+    // Crear botones de autenticación social
+    createSocialAuthButtons();
 });
+
+// Función para crear botones de autenticación social
+function createSocialAuthButtons() {
+    // Crear botones para modal de login
+    const loginModal = document.getElementById('login-modal');
+    if (loginModal) {
+        addSocialButtonsToModal(loginModal, 'login');
+    }
+    
+    // Crear botones para modal de registro
+    const registerModal = document.getElementById('register-modal');
+    if (registerModal) {
+        addSocialButtonsToModal(registerModal, 'register');
+    }
+}
+
+// Función para agregar botones sociales a un modal
+function addSocialButtonsToModal(modal, type) {
+    const form = modal.querySelector('form');
+    if (!form) return;
+    
+    // Crear contenedor para botones sociales
+    const socialContainer = document.createElement('div');
+    socialContainer.className = 'social-auth-container';
+    socialContainer.style.cssText = `
+        margin-top: 20px;
+        text-align: center;
+    `;
+    
+    // Crear título
+    const title = document.createElement('p');
+    title.textContent = 'O continúa con:';
+    title.style.cssText = `
+        margin-bottom: 15px;
+        color: #666;
+        font-size: 14px;
+    `;
+    
+    // Crear botones
+    const googleBtn = createSocialButton('Google', 'google', type);
+    const facebookBtn = createSocialButton('Facebook', 'facebook', type);
+    
+    // Agregar elementos al contenedor
+    socialContainer.appendChild(title);
+    socialContainer.appendChild(googleBtn);
+    socialContainer.appendChild(facebookBtn);
+    
+    // Insertar después del formulario
+    form.parentNode.insertBefore(socialContainer, form.nextSibling);
+}
+
+// Función para crear un botón social
+function createSocialButton(provider, providerClass, type) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `${providerClass}-${type}-btn social-auth-btn`;
+    button.innerHTML = `
+        <img src="https://via.placeholder.com/20x20?text=${provider.charAt(0)}" alt="${provider}" style="width: 20px; height: 20px; margin-right: 10px;">
+        ${type === 'login' ? 'Iniciar sesión' : 'Registrarse'} con ${provider}
+    `;
+    
+    button.style.cssText = `
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        border: 2px solid ${providerClass === 'google' ? '#4285f4' : '#1877f2'};
+        border-radius: 8px;
+        background: ${providerClass === 'google' ? '#4285f4' : '#1877f2'};
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    // Efecto hover
+    button.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+    });
+    
+    button.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = 'none';
+    });
+    
+    return button;
+}
