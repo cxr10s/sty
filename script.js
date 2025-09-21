@@ -7,21 +7,51 @@ let cartTotal = 0;
 const authSystem = {
     isAuthenticated: false,
     currentUser: null,
-    users: JSON.parse(localStorage.getItem('users')) || [],
+    database: null,
     
     // Inicializar sistema de autenticación
-    init() {
+    async init() {
+        try {
+            // Esperar a que la base de datos se inicialice
+            this.database = await database;
+            console.log('Sistema de autenticación inicializado con base de datos');
+        } catch (error) {
+            console.error('Error al inicializar la base de datos:', error);
+            // Fallback a localStorage si IndexedDB no está disponible
+            this.users = JSON.parse(localStorage.getItem('users')) || [];
+        }
+        
         this.checkExistingAuth();
         this.setupEventListeners();
     },
     
     // Verificar si hay una sesión existente
-    checkExistingAuth() {
+    async checkExistingAuth() {
         const savedUser = localStorage.getItem('currentUser');
         if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
-            this.isAuthenticated = true;
-            this.updateAuthUI();
+            try {
+                const userData = JSON.parse(savedUser);
+                // Verificar si el usuario aún existe en la base de datos
+                if (this.database) {
+                    const dbUser = await this.database.getUserById(userData.id);
+                    if (dbUser) {
+                        this.currentUser = dbUser;
+                        this.isAuthenticated = true;
+                        this.updateAuthUI();
+                    } else {
+                        // Usuario no existe en la base de datos, limpiar sesión
+                        localStorage.removeItem('currentUser');
+                    }
+                } else {
+                    // Fallback a localStorage
+                    this.currentUser = userData;
+                    this.isAuthenticated = true;
+                    this.updateAuthUI();
+                }
+            } catch (error) {
+                console.error('Error al verificar sesión existente:', error);
+                localStorage.removeItem('currentUser');
+            }
         }
     },
     
@@ -129,36 +159,63 @@ const authSystem = {
     },
     
     // Procesar resultado de autenticación
-    processAuthResult(userData, action, provider) {
-        const existingUser = this.users.find(user => user.email === userData.email);
-        
-        if (existingUser) {
-            // Usuario existente - hacer login
-            this.currentUser = existingUser;
-            this.isAuthenticated = true;
-            this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
-        } else {
-            // Nuevo usuario - crear cuenta
-            const newUser = {
-                ...userData,
-                id: userData.id,
-                createdAt: new Date().toISOString(),
-                orders: []
-            };
+    async processAuthResult(userData, action, provider) {
+        try {
+            let user;
             
-            this.users.push(newUser);
-            this.currentUser = newUser;
+            if (this.database) {
+                // Usar base de datos IndexedDB
+                const existingUser = await this.database.getUserByEmail(userData.email);
+                
+                if (existingUser) {
+                    // Usuario existente - actualizar último login
+                    user = await this.database.updateUser(existingUser.id, {
+                        lastLogin: new Date().toISOString()
+                    });
+                    this.showNotification(`¡Bienvenido de nuevo, ${user.name}!`);
+                } else {
+                    // Nuevo usuario - crear cuenta en la base de datos
+                    user = await this.database.addUser(userData);
+                    this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                }
+            } else {
+                // Fallback a localStorage
+                const existingUser = this.users.find(user => user.email === userData.email);
+                
+                if (existingUser) {
+                    // Usuario existente - hacer login
+                    user = existingUser;
+                    this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
+                } else {
+                    // Nuevo usuario - crear cuenta
+                    user = {
+                        ...userData,
+                        id: userData.id,
+                        createdAt: new Date().toISOString(),
+                        orders: []
+                    };
+                    
+                    this.users.push(user);
+                    localStorage.setItem('users', JSON.stringify(this.users));
+                    this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                }
+            }
+            
+            // Establecer usuario actual
+            this.currentUser = user;
             this.isAuthenticated = true;
-            this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+            
+            // Guardar sesión actual
+            localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+            
+            // Actualizar UI
+            this.updateAuthUI();
+            this.closeAuthModals();
+            
+        } catch (error) {
+            console.error('Error al procesar autenticación:', error);
+            this.showNotification('Error al procesar la autenticación. Por favor, intenta de nuevo.');
         }
-        
-        // Guardar datos
-        localStorage.setItem('users', JSON.stringify(this.users));
-        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-        
-        // Actualizar UI
-        this.updateAuthUI();
-        this.closeAuthModals();
     },
     
     // Actualizar interfaz de autenticación
@@ -194,6 +251,74 @@ const authSystem = {
         localStorage.removeItem('currentUser');
         this.updateAuthUI();
         this.showNotification('Sesión cerrada exitosamente');
+    },
+
+    // Guardar orden del usuario
+    async saveUserOrder(orderData) {
+        if (!this.isAuthenticated || !this.currentUser) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        try {
+            if (this.database) {
+                await this.database.addOrder(this.currentUser.id, orderData);
+                this.showNotification('Orden guardada exitosamente');
+            } else {
+                // Fallback a localStorage
+                if (!this.currentUser.orders) {
+                    this.currentUser.orders = [];
+                }
+                this.currentUser.orders.push(orderData);
+                localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+                this.showNotification('Orden guardada exitosamente');
+            }
+        } catch (error) {
+            console.error('Error al guardar orden:', error);
+            this.showNotification('Error al guardar la orden');
+        }
+    },
+
+    // Obtener órdenes del usuario
+    async getUserOrders() {
+        if (!this.isAuthenticated || !this.currentUser) {
+            return [];
+        }
+
+        try {
+            if (this.database) {
+                return await this.database.getUserOrders(this.currentUser.id);
+            } else {
+                // Fallback a localStorage
+                return this.currentUser.orders || [];
+            }
+        } catch (error) {
+            console.error('Error al obtener órdenes:', error);
+            return [];
+        }
+    },
+
+    // Exportar datos de usuarios (para administrador)
+    async exportUsersData() {
+        try {
+            if (this.database) {
+                return await this.database.exportUsers();
+            } else {
+                // Fallback a localStorage
+                const users = JSON.parse(localStorage.getItem('users')) || [];
+                const dataStr = JSON.stringify(users, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `usuarios_estilo_activo_${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                
+                return users;
+            }
+        } catch (error) {
+            console.error('Error al exportar datos:', error);
+            this.showNotification('Error al exportar datos');
+        }
     },
     
     // Cerrar modales de autenticación
@@ -1093,13 +1218,81 @@ function logout() {
     authSystem.logout();
 }
 
-function showMyProductsModal() {
+async function showMyProductsModal() {
     const modal = document.getElementById('my-products-modal');
     const overlay = document.getElementById('modal-overlay');
     
     if (modal && overlay) {
+        // Cargar órdenes del usuario
+        await loadUserOrders();
+        
         modal.classList.add('show');
         overlay.classList.add('show');
+    }
+}
+
+async function loadUserOrders() {
+    const content = document.getElementById('my-products-content');
+    if (!content) return;
+
+    try {
+        const orders = await authSystem.getUserOrders();
+        
+        if (orders.length === 0) {
+            content.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <p>No tienes productos comprados aún</p>
+                    <button class="btn-primary" onclick="closeMyProductsModal()">Comenzar a comprar</button>
+                </div>
+            `;
+        } else {
+            let ordersHTML = '<div class="orders-container">';
+            
+            orders.forEach((order, index) => {
+                const orderDate = new Date(order.orderDate).toLocaleDateString('es-CO');
+                const orderTime = new Date(order.orderDate).toLocaleTimeString('es-CO');
+                
+                ordersHTML += `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <h4>Orden #${index + 1}</h4>
+                            <span class="order-date">${orderDate} - ${orderTime}</span>
+                        </div>
+                        <div class="order-items">
+                            ${order.items.map(item => `
+                                <div class="order-item">
+                                    <span class="item-name">${item.name}</span>
+                                    <span class="item-quantity">x${item.quantity}</span>
+                                    <span class="item-price">$${item.price.toLocaleString()} COP</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="order-footer">
+                            <div class="order-total">
+                                <strong>Total: $${order.total.toLocaleString()} COP</strong>
+                            </div>
+                            <div class="order-payment">
+                                <span class="payment-method">${order.paymentMethod}</span>
+                                <span class="order-status">${order.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            ordersHTML += '</div>';
+            content.innerHTML = ordersHTML;
+        }
+    } catch (error) {
+        console.error('Error al cargar órdenes:', error);
+        content.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">❌</div>
+                <p>Error al cargar tus órdenes</p>
+                <button class="btn-primary" onclick="closeMyProductsModal()">Cerrar</button>
+            </div>
+        `;
     }
 }
 
@@ -1168,38 +1361,82 @@ function resendVerificationCode() {
 }
 
 // Funciones de pago
-function processNequiPayment() {
+async function processNequiPayment() {
     const number = document.getElementById('nequi-number').value;
     if (!number) {
         showNotification('Por favor ingresa tu número de Nequi');
         return;
     }
     showNotification('Procesando pago con Nequi...');
+    
     // Simular procesamiento
-    setTimeout(() => {
-        showNotification('¡Pago exitoso con Nequi!');
-        closePaymentModal();
-        // Limpiar carrito
-        cart = [];
-        updateCartDisplay();
-        updateCartIcon();
+    setTimeout(async () => {
+        try {
+            // Guardar orden en la base de datos
+            const orderData = {
+                items: cart.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity
+                })),
+                total: cartTotal,
+                paymentMethod: 'Nequi',
+                paymentNumber: number
+            };
+            
+            await authSystem.saveUserOrder(orderData);
+            
+            showNotification('¡Pago exitoso con Nequi!');
+            closePaymentModal();
+            
+            // Limpiar carrito
+            cart = [];
+            updateCartDisplay();
+            updateCartIcon();
+        } catch (error) {
+            console.error('Error al procesar pago:', error);
+            showNotification('Error al procesar el pago');
+        }
     }, 2000);
 }
 
-function processBancolombiaPayment() {
+async function processBancolombiaPayment() {
     const number = document.getElementById('bancolombia-number').value;
     if (!number) {
         showNotification('Por favor ingresa tu número de Bancolombia');
         return;
     }
     showNotification('Procesando pago con Bancolombia...');
+    
     // Simular procesamiento
-    setTimeout(() => {
-        showNotification('¡Pago exitoso con Bancolombia!');
-        closePaymentModal();
-        // Limpiar carrito
-        cart = [];
-        updateCartDisplay();
-        updateCartIcon();
+    setTimeout(async () => {
+        try {
+            // Guardar orden en la base de datos
+            const orderData = {
+                items: cart.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity
+                })),
+                total: cartTotal,
+                paymentMethod: 'Bancolombia',
+                paymentNumber: number
+            };
+            
+            await authSystem.saveUserOrder(orderData);
+            
+            showNotification('¡Pago exitoso con Bancolombia!');
+            closePaymentModal();
+            
+            // Limpiar carrito
+            cart = [];
+            updateCartDisplay();
+            updateCartIcon();
+        } catch (error) {
+            console.error('Error al procesar pago:', error);
+            showNotification('Error al procesar el pago');
+        }
     }, 2000);
 }
