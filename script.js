@@ -545,31 +545,46 @@ function getCatalogProducts(category) {
     // Productos adicionales para el catálogo
     const catalogProducts = {
         'camisetas': [
-            { id: 'camiseta-cat-1', name: 'Camiseta Adidas Originals', price: 60000, image: 'Camiseta adidas4.webp' },
-            { id: 'camiseta-cat-2', name: 'Camiseta Adidas Performance', price: 65000, image: 'Camiseta Adidas2.jpg' },
-            { id: 'camiseta-cat-3', name: 'Camiseta Adidas cLub', price: 55000, image: 'Camiseta Arsenal.png' },
-            { id: 'camiseta-cat-4', name: 'Camiseta Adidas club', price: 55000, image: 'Camiseta Alnassr.webp' },
-            { id: 'camiseta-cat-5', name: 'Camiseta Adidas Club', price: 55000, image: 'Camiseta Madrid black.png' }
+            { id: 'camiseta-cat-1', name: 'Camiseta Adidas Originals ', price: 60000, image: 'Camiseta adidas4.webp' },
+            { id: 'camiseta-cat-2', name: 'Camiseta Adidas Performance ', price: 65000, image: 'Camiseta Adidas2.jpg' },
+            { id: 'camiseta-cat-3', name: 'Camiseta Adidas Arsenal Club ', price: 55000, image: 'Camiseta Arsenal.png' },
+            { id: 'camiseta-cat-4', name: 'Camiseta Adidas Al Nassr Club ', price: 55000, image: 'Camiseta Alnassr.webp' },
+            { id: 'camiseta-cat-5', name: 'Camiseta Adidas Real Madrid Club ', price: 55000, image: 'Camiseta Madrid black.png' }
         ],
         'tenis': [
-            { id: 'tenis-cat-1', name: 'Tenis Adidas Yeezy', price: 800000, image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop' },
-            { id: 'tenis-cat-2', name: 'Tenis Adidas Boost', price: 350000, image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=300&h=300&fit=crop' },
-            { id: 'tenis-cat-3', name: 'Tenis Adidas Retro', price: 200000, image: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=300&h=300&fit=crop' }
+            { id: 'tenis-cat-1', name: 'Tenis Adidas Yeezy', price: 800000, image: 'Tenis Adidas Yeezy.webp' },
+            { id: 'tenis-cat-2', name: 'Tenis Adidas Boost', price: 350000, image: 'Tenis Adidas Boost.avif' },
+            { id: 'tenis-cat-3', name: 'Tenis Adidas Retro', price: 200000, image: 'Tenis Adidas Retro.jpg' }
         ],
         'jeans': [
-            { id: 'jeans-cat-1', name: 'Jeans Premium', price: 120000, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=300&h=300&fit=crop' },
-            { id: 'jeans-cat-2', name: 'Jeans Vintage', price: 100000, image: 'https://images.unsplash.com/photo-1582418702059-97ebafb35d09?w=300&h=300&fit=crop' },
-            { id: 'jeans-cat-3', name: 'Jeans Comfort', price: 85000, image: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=300&h=300&fit=crop' }
+            { id: 'jeans-cat-1', name: 'Jeans Clasicos', price: 120000, image: 'Jeans clasico hombre.jpg' },
+            { id: 'jeans-cat-2', name: 'Jeans Clasicos 2', price: 120000, image: 'Jeans clasicos catalogo.jpg' },
+            { id: 'jeans-cat-3', name: 'Jeans Vintage', price: 100000, image: 'jeans ventage dama2.webp' },
+            { id: 'jeans-cat-4', name: 'Jeans Vintage 2', price: 100000, image: 'jeans vintage dama.webp' },
+            { id: 'jeans-cat-5', name: 'Jeans Rotos', price: 85000, image: 'jeans rotos2.webp' },
+            { id: 'jeans-cat-6', name: 'Jeans Relaxed', price: 85000, image: 'jeans relaxed 2.webp' },
+            { id: 'jeans-cat-7', name: 'Jeans Modernos', price: 85000, image: 'jeans modernos2.webp' },
+            { id: 'jeans-cat-8', name: 'Jeans Modernos 2', price: 85000, image: 'jeans modernos.jpg' }
         ],
         'cascos': [
-            { id: 'casco-cat-1', name: 'Casco Premium', price: 300000, image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=300&fit=crop' },
-            { id: 'casco-cat-2', name: 'Casco Racing', price: 250000, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop' },
-            { id: 'casco-cat-3', name: 'Casco Touring', price: 180000, image: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop' }
+            { id: 'casco-cat-1', name: 'Casco Premium', price: 300000, image: 'Casco Premium.jpg' },
+            { id: 'casco-cat-2', name: 'Casco Premium 2', price: 300000, image: 'Casco Premium2.webp' },
+            { id: 'casco-cat-3', name: 'Casco Racing', price: 250000, image: 'Casco Racing.jpg' },
+            { id: 'casco-cat-4', name: 'Casco Racing 2', price: 250000, image: 'Casco Racing2.jpg' },
+            { id: 'casco-cat-5', name: 'Casco Touring', price: 180000, image: 'Casco Touring.webp' },
+            { id: 'casco-cat-6', name: 'Casco Touring 2', price: 180000, image: 'Casco Touring2.webp' }
         ],
         'deportes': [
-            { id: 'deportes-cat-1', name: 'Bicicleta Mountain Bike', price: 1500000, image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=300&h=300&fit=crop' },
-            { id: 'deportes-cat-2', name: 'Equipo Completo Ciclismo', price: 800000, image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=300&fit=crop' },
-            { id: 'deportes-cat-3', name: 'Accesorios Deportivos', price: 120000, image: 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop' }
+            { id: 'deportes-cat-1', name: 'Bicicleta Mountain Bike', price: 1500000, image: 'BicicletaCata.jpg' },
+            { id: 'deportes-cat-2', name: 'Bicicleta Mountain Bike 2', price: 1500000, image: 'Bicicleta Bike 3.webp' },
+            { id: 'deportes-cat-3', name: 'Bicicleta Mountain Bike 3', price: 1500000, image: 'Bicicleta Bike 4.jpg' },
+            { id: 'deportes-cat-4', name: 'Bicicleta Mountain Bike 4', price: 1500000, image: 'Bicicleta Bike2.webp' },
+            { id: 'deportes-cat-5', name: 'Equipo Completo Ciclismo', price: 800000, image: 'Equipo Completo 1.avif' },
+            { id: 'deportes-cat-6', name: 'Equipo Completo Ciclismo 2', price: 800000, image: 'Equipo Completo 2.avif' },
+            { id: 'deportes-cat-7', name: 'Equipo Completo Ciclismo 3', price: 800000, image: 'Equipo Completo 3.avif' },
+            { id: 'deportes-cat-8', name: 'Accesorios Deportivos', price: 120000, image: 'Acesorios Bici.webp' },
+            { id: 'deportes-cat-9', name: 'Accesorios Deportivos 2', price: 120000, image: 'Acesorios Bici2.jpg' },
+            { id: 'deportes-cat-10', name: 'Accesorios Deportivos 3', price: 120000, image: 'Acesorios Bici3.jpeg' }
         ]
     };
     
