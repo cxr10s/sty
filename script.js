@@ -284,6 +284,52 @@ function updateCartDisplay() {
     }
     
     cartTotal = total;
+    
+    // Detectar si hay muchos productos y aplicar clase correspondiente
+    const cartItemsContainer = document.getElementById('cart-items');
+    if (cartItemsContainer) {
+        if (cart.length > 3) {
+            cartItemsContainer.classList.add('has-many-items');
+            // Agregar indicador visual adicional
+            addScrollIndicator();
+        } else {
+            cartItemsContainer.classList.remove('has-many-items');
+            removeScrollIndicator();
+        }
+    }
+}
+
+// Funciones auxiliares para el indicador de scroll
+function addScrollIndicator() {
+    const cartItems = document.getElementById('cart-items');
+    if (cartItems && !cartItems.querySelector('.scroll-indicator')) {
+        const indicator = document.createElement('div');
+        indicator.className = 'scroll-indicator';
+        indicator.innerHTML = '💳 El botón de pago está siempre visible abajo';
+        indicator.style.cssText = `
+            position: sticky;
+            bottom: 0;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            color: white;
+            padding: 0.8rem;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+            z-index: 10000;
+            border-radius: 10px 10px 0 0;
+            margin-top: 1rem;
+            box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.5s ease-out;
+        `;
+        cartItems.appendChild(indicator);
+    }
+}
+
+function removeScrollIndicator() {
+    const indicator = document.querySelector('.scroll-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
 }
 
 function updateCartIcon() {

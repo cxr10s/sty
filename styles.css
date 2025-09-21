@@ -702,7 +702,8 @@ html {
     flex: 1;
     padding: 1rem;
     overflow-y: auto;
-    max-height: calc(100vh - 200px);
+    max-height: calc(100vh - 250px);
+    padding-bottom: 1rem;
 }
 
 .cart-item {
@@ -776,6 +777,11 @@ html {
     padding: 1.5rem;
     border-top: 1px solid #333;
     background: rgba(0, 0, 0, 0.2);
+    position: sticky;
+    bottom: 0;
+    z-index: 10001;
+    backdrop-filter: blur(10px);
+    border-radius: 0 0 15px 15px;
 }
 
 .cart-total p {
@@ -815,11 +821,107 @@ html {
     cursor: pointer;
     transition: all 0.3s ease;
     margin-top: 1rem;
+    position: relative;
+    z-index: 10002;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
 }
 
 .checkout-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+}
+
+/* Estilos adicionales para garantizar visibilidad del botón */
+.cart-sidebar {
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-sidebar .cart-items {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4ecdc4 #333;
+}
+
+.cart-sidebar .cart-items::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cart-sidebar .cart-items::-webkit-scrollbar-track {
+    background: #333;
+    border-radius: 3px;
+}
+
+.cart-sidebar .cart-items::-webkit-scrollbar-thumb {
+    background: #4ecdc4;
+    border-radius: 3px;
+}
+
+.cart-sidebar .cart-items::-webkit-scrollbar-thumb:hover {
+    background: #ff6b6b;
+}
+
+/* Indicador visual cuando hay muchos productos */
+.cart-items.has-many-items {
+    position: relative;
+}
+
+.cart-items.has-many-items::after {
+    content: "↓ Desplázate para ver más productos ↓";
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 10000;
+    border-radius: 0 0 10px 10px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Mejoras adicionales para el botón de pago */
+.cart-summary {
+    position: sticky;
+    bottom: 0;
+    z-index: 10001;
+    backdrop-filter: blur(10px);
+    border-radius: 0 0 15px 15px;
+    transition: all 0.3s ease;
+}
+
+/* Efecto de sombra cuando hay scroll */
+.cart-items:not(:empty) + .cart-summary {
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Animación de pulso para el botón cuando hay muchos productos */
+.cart-items.has-many-items + .cart-summary .checkout-btn {
+    animation: checkoutPulse 3s ease-in-out infinite;
+}
+
+@keyframes checkoutPulse {
+    0%, 100% { 
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    }
+    50% { 
+        box-shadow: 0 6px 25px rgba(255, 107, 107, 0.5);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Botones de productos */
@@ -1567,6 +1669,23 @@ body.modal-open {
     .cart-sidebar {
         width: 100%;
         right: -100%;
+    }
+    
+    .cart-summary {
+        position: sticky;
+        bottom: 0;
+        z-index: 10001;
+        background: rgba(26, 26, 46, 0.95);
+        backdrop-filter: blur(15px);
+        border-radius: 15px 15px 0 0;
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .checkout-btn {
+        font-size: 1.2rem;
+        padding: 1.2rem;
+        border-radius: 15px;
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
     }
     
     .modal-content {
