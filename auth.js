@@ -211,20 +211,40 @@ class AuthSystem {
     // Login con Google
     async loginWithGoogle() {
         try {
-            if (typeof google !== 'undefined') {
-                google.accounts.id.prompt();
+            if (typeof google !== 'undefined' && google.accounts) {
+                // Usar Google Identity Services
+                google.accounts.id.initialize({
+                    client_id: 'YOUR_GOOGLE_CLIENT_ID', // Reemplazar con tu Client ID real
+                    callback: this.handleGoogleCallback.bind(this),
+                    auto_select: false,
+                    cancel_on_tap_outside: true
+                });
+                
+                // Mostrar el popup de Google
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        console.log('Google Sign-In no se pudo mostrar');
+                    }
+                });
             } else {
-                // Fallback para desarrollo
+                // Fallback para desarrollo - simular autenticación
+                this.showNotification('Iniciando sesión con Google...');
+                
+                // Simular delay de autenticación
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 const mockUser = {
                     id: 'google_' + Date.now(),
                     name: 'Usuario Google',
                     email: 'usuario@google.com',
                     provider: 'google',
-                    verified: true
+                    verified: true,
+                    picture: 'https://via.placeholder.com/150/4285f4/ffffff?text=G'
                 };
                 this.handleOAuthSuccess(mockUser);
             }
         } catch (error) {
+            console.error('Error en Google Sign-In:', error);
             this.showNotification('Error al iniciar sesión con Google');
         }
     }
@@ -235,30 +255,41 @@ class AuthSystem {
             if (typeof FB !== 'undefined') {
                 FB.login((response) => {
                     if (response.authResponse) {
-                        FB.api('/me', { fields: 'name,email' }, (userInfo) => {
+                        // Obtener información del usuario
+                        FB.api('/me', { fields: 'name,email,picture' }, (userInfo) => {
                             const user = {
                                 id: 'facebook_' + userInfo.id,
                                 name: userInfo.name,
                                 email: userInfo.email,
                                 provider: 'facebook',
-                                verified: true
+                                verified: true,
+                                picture: userInfo.picture?.data?.url || 'https://via.placeholder.com/150/1877f2/ffffff?text=F'
                             };
                             this.handleOAuthSuccess(user);
                         });
+                    } else {
+                        this.showNotification('Error al autenticar con Facebook');
                     }
-                }, { scope: 'email' });
+                }, { scope: 'email,public_profile' });
             } else {
-                // Fallback para desarrollo
+                // Fallback para desarrollo - simular autenticación
+                this.showNotification('Iniciando sesión con Facebook...');
+                
+                // Simular delay de autenticación
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 const mockUser = {
                     id: 'facebook_' + Date.now(),
                     name: 'Usuario Facebook',
                     email: 'usuario@facebook.com',
                     provider: 'facebook',
-                    verified: true
+                    verified: true,
+                    picture: 'https://via.placeholder.com/150/1877f2/ffffff?text=F'
                 };
                 this.handleOAuthSuccess(mockUser);
             }
         } catch (error) {
+            console.error('Error en Facebook Login:', error);
             this.showNotification('Error al iniciar sesión con Facebook');
         }
     }
@@ -266,6 +297,8 @@ class AuthSystem {
     // Manejar éxito de OAuth
     async handleOAuthSuccess(user) {
         try {
+            this.showNotification('Procesando autenticación...');
+            
             const response = await this.simulateApiCall('/api/auth/oauth', user);
             
             if (response.success) {
@@ -274,25 +307,69 @@ class AuthSystem {
                 localStorage.setItem('authToken', response.token);
                 localStorage.setItem('userData', JSON.stringify(response.user));
                 
+                // Cerrar todos los modales de autenticación
                 this.closeLoginModal();
+                this.closeRegisterModal();
+                this.closeEmailVerificationModal();
+                
                 this.updateUI();
-                this.showNotification(`¡Bienvenido, ${user.name}!`);
+                
+                // Mostrar mensaje de bienvenida personalizado
+                if (response.isNewUser) {
+                    this.showNotification(`¡Bienvenido a Estilo Activo, ${user.name}! Tu cuenta ha sido creada exitosamente.`);
+                } else {
+                    this.showNotification(`¡Bienvenido de vuelta, ${user.name}!`);
+                }
+                
+                // Actualizar la UI con la foto del usuario si está disponible
+                this.updateUserProfile(user);
+            } else {
+                this.showNotification('Error al autenticar: ' + (response.message || 'Error desconocido'));
             }
         } catch (error) {
+            console.error('Error en OAuth:', error);
             this.showNotification('Error al procesar el login');
         }
     }
 
     // Callback de Google
     handleGoogleCallback(response) {
-        const user = {
-            id: 'google_' + response.credential,
-            name: response.name,
-            email: response.email,
-            provider: 'google',
-            verified: true
-        };
-        this.handleOAuthSuccess(user);
+        try {
+            // Decodificar el JWT token para obtener información del usuario
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            
+            const user = {
+                id: 'google_' + payload.sub,
+                name: payload.name,
+                email: payload.email,
+                provider: 'google',
+                verified: payload.email_verified,
+                picture: payload.picture
+            };
+            
+            this.handleOAuthSuccess(user);
+        } catch (error) {
+            console.error('Error decodificando Google token:', error);
+            this.showNotification('Error al procesar la información de Google');
+        }
+    }
+
+    // Actualizar perfil del usuario en la UI
+    updateUserProfile(user) {
+        // Actualizar avatar si está disponible
+        if (user.picture) {
+            const userAvatar = document.querySelector('.user-avatar');
+            if (userAvatar) {
+                userAvatar.src = user.picture;
+                userAvatar.style.display = 'block';
+            }
+        }
+        
+        // Actualizar nombre del usuario en la UI
+        const userNameElements = document.querySelectorAll('.user-name');
+        userNameElements.forEach(element => {
+            element.textContent = user.name;
+        });
     }
 
     // Cerrar sesión
@@ -310,15 +387,27 @@ class AuthSystem {
         const loginBtn = document.getElementById('login-btn');
         const myProductsBtn = document.getElementById('my-products-btn');
         const logoutBtn = document.getElementById('logout-btn');
+        const userInfo = document.getElementById('user-info');
+        const userAvatar = document.getElementById('user-avatar');
+        const userName = document.getElementById('user-name');
 
-        if (this.isAuthenticated) {
+        if (this.isAuthenticated && this.currentUser) {
             if (loginBtn) loginBtn.style.display = 'none';
             if (myProductsBtn) myProductsBtn.style.display = 'block';
             if (logoutBtn) logoutBtn.style.display = 'block';
+            if (userInfo) userInfo.style.display = 'flex';
+            
+            // Mostrar información del usuario
+            if (userName) userName.textContent = this.currentUser.name;
+            if (userAvatar && this.currentUser.picture) {
+                userAvatar.src = this.currentUser.picture;
+                userAvatar.style.display = 'block';
+            }
         } else {
             if (loginBtn) loginBtn.style.display = 'block';
             if (myProductsBtn) myProductsBtn.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = 'none';
+            if (userInfo) userInfo.style.display = 'none';
         }
     }
 
@@ -326,6 +415,12 @@ class AuthSystem {
     validateEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
+    }
+
+    validateColombianPhone(phone) {
+        // Validar formato colombiano: +57 seguido de 10 dígitos
+        const phoneRegex = /^\+57\s?\d{10}$/;
+        return phoneRegex.test(phone);
     }
 
     validateRegistration(data) {
@@ -357,6 +452,11 @@ class AuthSystem {
         // Validar fecha de nacimiento
         if (!data.birthdate) {
             return { isValid: false, field: 'register-birthdate', message: 'La fecha de nacimiento es requerida' };
+        }
+
+        // Validar teléfono colombiano
+        if (!this.validateColombianPhone(data.phone)) {
+            return { isValid: false, field: 'register-phone', message: 'El teléfono debe tener formato +57 seguido de 10 dígitos' };
         }
 
         // Validar contraseña
@@ -442,6 +542,40 @@ class AuthSystem {
         if (cardCvv) {
             cardCvv.addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+        }
+
+        // Formatear teléfono colombiano
+        const phoneInput = document.getElementById('register-phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                
+                // Si empieza con 57, agregar +57
+                if (value.startsWith('57') && value.length > 2) {
+                    value = '+57' + value.substring(2);
+                } else if (!value.startsWith('+57') && value.length > 0) {
+                    value = '+57' + value;
+                }
+                
+                // Limitar a +57 + 10 dígitos
+                if (value.startsWith('+57')) {
+                    const digits = value.substring(3);
+                    if (digits.length > 10) {
+                        value = '+57' + digits.substring(0, 10);
+                    }
+                }
+                
+                e.target.value = value;
+            });
+            
+            // Validar en tiempo real
+            phoneInput.addEventListener('blur', (e) => {
+                if (e.target.value && !this.validateColombianPhone(e.target.value)) {
+                    this.showError('register-phone-error', 'Formato inválido. Debe ser +57 seguido de 10 dígitos');
+                } else {
+                    this.clearError('register-phone-error');
+                }
             });
         }
     }
@@ -663,6 +797,14 @@ class AuthSystem {
         }
     }
 
+    clearError(fieldId) {
+        const errorElement = document.getElementById(fieldId);
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.classList.remove('show');
+        }
+    }
+
     showNotification(message) {
         // Usar la función existente del script principal
         if (typeof showNotification === 'function') {
@@ -757,11 +899,39 @@ class AuthSystem {
                     return { success: false, message: 'Código incorrecto' };
 
                 case '/api/auth/oauth':
-                    return {
-                        success: true,
-                        token: 'mock_jwt_token_' + Date.now(),
-                        user: data
-                    };
+                    // Simular verificación si el usuario ya existe
+                    const existingUsers = JSON.parse(localStorage.getItem('oauth_users') || '[]');
+                    const existingUser = existingUsers.find(u => u.email === data.email);
+                    
+                    if (existingUser) {
+                        // Usuario existente - solo login
+                        return {
+                            success: true,
+                            token: 'mock_jwt_token_' + Date.now(),
+                            user: existingUser,
+                            isNewUser: false
+                        };
+                    } else {
+                        // Usuario nuevo - crear cuenta
+                        const newUser = {
+                            ...data,
+                            id: data.id,
+                            created_at: new Date().toISOString(),
+                            phone: null, // Los usuarios OAuth no tienen teléfono inicialmente
+                            docType: null,
+                            docNumber: null
+                        };
+                        
+                        existingUsers.push(newUser);
+                        localStorage.setItem('oauth_users', JSON.stringify(existingUsers));
+                        
+                        return {
+                            success: true,
+                            token: 'mock_jwt_token_' + Date.now(),
+                            user: newUser,
+                            isNewUser: true
+                        };
+                    }
 
                 case '/api/payments/process':
                     return { success: true, transactionId: 'txn_' + Date.now() };

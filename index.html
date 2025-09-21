@@ -25,6 +25,10 @@
             </ul>
             <div class="nav-actions">
                 <button id="login-btn" class="nav-btn" onclick="showLoginModal()">Iniciar Sesión</button>
+                <div id="user-info" style="display: none; align-items: center; gap: 0.5rem;">
+                    <img id="user-avatar" class="user-avatar" src="" alt="Avatar">
+                    <span id="user-name" class="user-name"></span>
+                </div>
                 <button id="my-products-btn" class="nav-btn" onclick="showMyProductsModal()" style="display: none;">Mis Productos</button>
                 <button id="logout-btn" class="nav-btn logout-btn" onclick="logout()" style="display: none;">Cerrar Sesión</button>
             </div>
@@ -498,6 +502,15 @@
                         <label for="register-birthdate">Fecha de nacimiento</label>
                         <input type="date" id="register-birthdate" name="birthdate" required>
                         <span class="error-message" id="register-birthdate-error"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="register-phone">Número de teléfono</label>
+                        <input type="tel" id="register-phone" name="phone" placeholder="+57 300 123 4567" required>
+                        <span class="error-message" id="register-phone-error"></span>
+                        <small style="color: #666; font-size: 0.8rem; margin-top: 0.3rem; display: block;">
+                            Formato requerido: +57 seguido de 10 dígitos (ej: +57 300 123 4567)
+                        </small>
                     </div>
                     
                     <div class="form-group">
