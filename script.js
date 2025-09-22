@@ -978,7 +978,7 @@ function getCatalogProducts(category) {
             { id: 'camiseta-cat-5', name: 'Camiseta Adidas Real Madrid Club ', price: 55000, image: 'Camiseta Madrid black.png' }
         ],
         'tenis': [
-            { id: 'tenis-cat-1', name: 'Tenis Adidas Yeezy', price: 800000, image: 'Tenis Adidas Yeezy.webp' },
+            { id: 'tenis-cat-1', name: 'Tenis Adidas Yeezy', price: 800000, image: 'Tenis Adidas yeezy.webp' },
             { id: 'tenis-cat-2', name: 'Tenis Adidas Boost', price: 350000, image: 'Tenis Adidas Boost.avif' },
             { id: 'tenis-cat-3', name: 'Tenis Adidas Retro', price: 200000, image: 'Tenis Adidas Retro.jpg' }
         ],
@@ -989,8 +989,8 @@ function getCatalogProducts(category) {
             { id: 'jeans-cat-4', name: 'Jeans Vintage 2', price: 100000, image: 'jeans vintage dama.webp' },
             { id: 'jeans-cat-5', name: 'Jeans Rotos', price: 85000, image: 'jeans rotos2.webp' },
             { id: 'jeans-cat-6', name: 'Jeans Relaxed', price: 85000, image: 'jeans relaxed 2.webp' },
-            { id: 'jeans-cat-7', name: 'Jeans Modernos', price: 85000, image: 'jeans modernos2.webp' },
-            { id: 'jeans-cat-8', name: 'Jeans Modernos 2', price: 85000, image: 'jeans modernos.jpg' }
+            { id: 'jeans-cat-7', name: 'Jeans Modernos', price: 85000, image: 'Jeans modernos2.webp' },
+            { id: 'jeans-cat-8', name: 'Jeans Modernos 2', price: 85000, image: 'Jeans modernos.jpg' }
         ],
         'cascos': [
             { id: 'casco-cat-1', name: 'Casco Premium', price: 300000, image: 'Casco Premium.jpg' },
@@ -1437,4 +1437,5 @@ async function processBancolombiaPayment() {
             showNotification('Error al procesar el pago');
         }
     }, 2000);
+
 }
