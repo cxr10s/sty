@@ -828,7 +828,7 @@ function updateCartIcon() {
     // Crear el ícono del carrito
     cartIcon.innerHTML = `
         <div style="font-size: 20px; margin-bottom: 2px;">🛒</div>
-        <div style="font-size: 12px; font-weight: bold; background: rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 2px 6px; min-width: 18px; text-align: center;">${totalItems}</div>
+        <div style="font-size: 12px; font-weight: bold; background: rgba(24, 22, 22, 0.2); border-radius: 10px; padding: 2px 6px; min-width: 18px; text-align: center;">${totalItems}</div>
     `;
     
     if (totalItems > 0) {
