@@ -128,6 +128,9 @@ class AuthSystem {
                 this.closeLoginModal();
                 this.updateUI();
                 this.showNotification('¡Bienvenido de vuelta!');
+                
+                // OBLIGAR AL USUARIO A CONTINUAR CON EL PROCESO DE COMPRA
+                this.forcePurchaseFlow();
             } else {
                 this.showError('login-password-error', response.message || 'Credenciales incorrectas');
             }
@@ -200,6 +203,9 @@ class AuthSystem {
                 this.closeEmailVerificationModal();
                 this.updateUI();
                 this.showNotification('¡Cuenta verificada exitosamente!');
+                
+                // OBLIGAR AL USUARIO A CONTINUAR CON EL PROCESO DE COMPRA
+                this.forcePurchaseFlow();
             } else {
                 this.showError('verification-code-error', 'Código incorrecto');
             }
@@ -299,6 +305,16 @@ class AuthSystem {
         try {
             this.showNotification('Procesando autenticación...');
             
+            // VERIFICAR SI EL USUARIO ESTÁ REGISTRADO EN LA BASE DE DATOS
+            const isUserRegistered = await this.verifyUserRegistration(user.email);
+            
+            if (!isUserRegistered) {
+                // Usuario no registrado - obligar a completar registro
+                this.showNotification('Debes completar tu registro para continuar');
+                this.forceUserRegistration(user);
+                return;
+            }
+            
             const response = await this.simulateApiCall('/api/auth/oauth', user);
             
             if (response.success) {
@@ -323,6 +339,9 @@ class AuthSystem {
                 
                 // Actualizar la UI con la foto del usuario si está disponible
                 this.updateUserProfile(user);
+                
+                // OBLIGAR AL USUARIO A CONTINUAR CON EL PROCESO DE COMPRA
+                this.forcePurchaseFlow();
             } else {
                 this.showNotification('Error al autenticar: ' + (response.message || 'Error desconocido'));
             }
@@ -719,39 +738,95 @@ class AuthSystem {
             const items = window.cart || [];
             const amount = window.cartTotal || 0;
 
-            // Procesar pago
-            const response = await this.simulateApiCall('/api/payments/process', {
-                method,
-                data,
-                amount,
-                items
-            });
+            // SOLO REGISTRAR TRANSACCIÓN SI EL PAGO ES EXITOSO
+            const paymentSuccess = await this.simulatePaymentProcessing(method, data);
 
-            if (response.success) {
-                this.closePaymentModal();
-                
-                // Limpiar carrito
-                if (window.cart) {
-                    window.cart = [];
-                    if (typeof updateCartDisplay === 'function') {
-                        updateCartDisplay();
+            if (paymentSuccess) {
+                // Procesar pago exitoso
+                const response = await this.simulateApiCall('/api/payments/process', {
+                    method,
+                    data,
+                    amount,
+                    items
+                });
+
+                if (response.success) {
+                    // GUARDAR ORDEN EN LA BASE DE DATOS SOLO SI EL PAGO FUE EXITOSO
+                    const orderData = {
+                        items: items.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            quantity: item.quantity
+                        })),
+                        total: amount,
+                        paymentMethod: method,
+                        paymentData: data,
+                        status: 'completed',
+                        orderDate: new Date().toISOString(),
+                        transactionId: method + '_' + Date.now()
+                    };
+                    
+                    await this.saveUserOrder(orderData);
+                    
+                    this.closePaymentModal();
+                    
+                    // Limpiar carrito
+                    if (window.cart) {
+                        window.cart = [];
+                        if (typeof updateCartDisplay === 'function') {
+                            updateCartDisplay();
+                        }
+                        if (typeof updateCartIcon === 'function') {
+                            updateCartIcon();
+                        }
                     }
-                    if (typeof updateCartIcon === 'function') {
-                        updateCartIcon();
-                    }
+                    
+                    this.showNotification('¡Pago procesado exitosamente! Transacción registrada.');
+                    
+                    // Actualizar productos del usuario
+                    setTimeout(() => {
+                        this.loadUserProducts();
+                    }, 1000);
+                } else {
+                    this.showNotification('Error al procesar el pago: ' + response.message);
                 }
-                
-                this.showNotification('¡Pago procesado exitosamente!');
-                
-                // Actualizar productos del usuario
-                setTimeout(() => {
-                    this.loadUserProducts();
-                }, 1000);
             } else {
-                this.showNotification('Error al procesar el pago: ' + response.message);
+                this.showNotification('Error en el procesamiento del pago. Intenta de nuevo.');
             }
         } catch (error) {
             this.showNotification('Error al procesar el pago: ' + error.message);
+        }
+    }
+
+    // SIMULAR PROCESAMIENTO DE PAGO (solo registra si es exitoso)
+    async simulatePaymentProcessing(method, data) {
+        // Simular validación según el método
+        if (method === 'card') {
+            if (!data.number || data.number.length < 16) {
+                return false;
+            }
+            if (!data.expiry || !/^\d{2}\/\d{2}$/.test(data.expiry)) {
+                return false;
+            }
+            if (!data.cvv || data.cvv.length < 3) {
+                return false;
+            }
+        } else if (method === 'nequi' || method === 'bancolombia') {
+            if (!data.number || data.number.length < 10) {
+                return false;
+            }
+        }
+        
+        // Simular probabilidad de éxito (90% de éxito)
+        const success = Math.random() > 0.1;
+        
+        if (success) {
+            console.log(`Pago exitoso con ${method}`);
+            return true;
+        } else {
+            console.log(`Pago fallido con ${method}`);
+            return false;
         }
     }
 
@@ -1004,6 +1079,280 @@ class AuthSystem {
             this.showNotification(`Se agregaron ${products.length} productos a tu perfil`);
         }
     }
+
+    // OBLIGAR AL USUARIO A CONTINUAR CON EL PROCESO DE COMPRA
+    forcePurchaseFlow() {
+        // Mostrar modal obligatorio de compra
+        setTimeout(() => {
+            this.showMandatoryPurchaseModal();
+        }, 2000); // Esperar 2 segundos para que el usuario vea el mensaje de bienvenida
+    }
+
+    // Mostrar modal obligatorio de compra
+    showMandatoryPurchaseModal() {
+        // Crear modal si no existe
+        let modal = document.getElementById('mandatory-purchase-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'mandatory-purchase-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content mandatory-purchase-modal">
+                    <div class="modal-header">
+                        <h3>¡Continúa con tu Compra!</h3>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mandatory-purchase-content">
+                            <div class="purchase-icon">🛒</div>
+                            <p class="mandatory-text">Para completar tu experiencia en Estilo Activo, debes continuar con el proceso de compra.</p>
+                            <p class="mandatory-subtext">Selecciona al menos un producto para proceder con el pago.</p>
+                            <div class="mandatory-actions">
+                                <button class="btn-primary" onclick="startMandatoryPurchase()">Continuar Comprando</button>
+                                <button class="btn-secondary" onclick="closeMandatoryPurchaseModal()">Ver Catálogo</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Mostrar modal
+        this.openModal('mandatory-purchase-modal');
+        
+        // Prevenir que el usuario cierre el modal
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay) {
+            overlay.onclick = null; // Deshabilitar click en overlay
+        }
+    }
+
+    // Cerrar modal obligatorio (solo si hay productos en el carrito)
+    closeMandatoryPurchaseModal() {
+        const cart = window.cart || [];
+        if (cart.length > 0) {
+            this.closeModal('mandatory-purchase-modal');
+            this.showNotification('¡Perfecto! Continúa con el proceso de pago.');
+        } else {
+            this.showNotification('Debes agregar al menos un producto al carrito para continuar.');
+        }
+    }
+
+    // VERIFICAR SI EL USUARIO ESTÁ REGISTRADO EN LA BASE DE DATOS
+    async verifyUserRegistration(email) {
+        try {
+            // Intentar verificar en el servidor primero
+            try {
+                const response = await fetch(`/api/users/email/${email}`);
+                const result = await response.json();
+                return result.success && result.user;
+            } catch (serverError) {
+                console.log('Servidor no disponible, verificando en base de datos local');
+                
+                // Fallback a base de datos local
+                if (this.database) {
+                    const user = await this.database.getUserByEmail(email);
+                    return !!user;
+                } else {
+                    // Fallback a localStorage
+                    const users = JSON.parse(localStorage.getItem('users')) || [];
+                    return users.some(user => user.email === email);
+                }
+            }
+        } catch (error) {
+            console.error('Error al verificar registro del usuario:', error);
+            return false;
+        }
+    }
+
+    // FORZAR AL USUARIO A COMPLETAR SU REGISTRO
+    forceUserRegistration(oauthUser) {
+        // Crear modal de registro obligatorio
+        let modal = document.getElementById('mandatory-registration-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'mandatory-registration-modal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content mandatory-registration-modal">
+                    <div class="modal-header">
+                        <h3>Completa tu Registro</h3>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mandatory-registration-content">
+                            <div class="registration-icon">📝</div>
+                            <p class="mandatory-text">Para continuar, debes completar tu información personal.</p>
+                            <p class="mandatory-subtext">Esta información es obligatoria para procesar tus compras.</p>
+                            
+                            <form id="mandatory-registration-form" class="auth-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="mandatory-name">Nombre</label>
+                                        <input type="text" id="mandatory-name" name="name" value="${oauthUser.name.split(' ')[0] || ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mandatory-lastname">Apellidos</label>
+                                        <input type="text" id="mandatory-lastname" name="lastname" value="${oauthUser.name.split(' ').slice(1).join(' ') || ''}" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="mandatory-doc-type">Tipo de documento</label>
+                                        <select id="mandatory-doc-type" name="docType" required>
+                                            <option value="">Seleccionar</option>
+                                            <option value="CC">Cédula de Ciudadanía</option>
+                                            <option value="CE">Cédula de Extranjería</option>
+                                            <option value="TI">Tarjeta de Identidad</option>
+                                            <option value="PA">Pasaporte</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="mandatory-doc-number">Número de documento</label>
+                                        <input type="text" id="mandatory-doc-number" name="docNumber" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="mandatory-email">Correo electrónico</label>
+                                    <input type="email" id="mandatory-email" name="email" value="${oauthUser.email}" readonly>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="mandatory-birthdate">Fecha de nacimiento</label>
+                                    <input type="date" id="mandatory-birthdate" name="birthdate" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="mandatory-phone">Número de teléfono</label>
+                                    <input type="tel" id="mandatory-phone" name="phone" placeholder="+57 300 123 4567" required>
+                                    <small style="color: #666; font-size: 0.8rem; margin-top: 0.3rem; display: block;">
+                                        Formato requerido: +57 seguido de 10 dígitos (ej: +57 300 123 4567)
+                                    </small>
+                                </div>
+                                
+                                <div class="mandatory-actions">
+                                    <button type="submit" class="btn-primary">Completar Registro</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Mostrar modal
+        this.openModal('mandatory-registration-modal');
+        
+        // Configurar event listener para el formulario
+        const form = document.getElementById('mandatory-registration-form');
+        if (form) {
+            form.addEventListener('submit', (e) => this.handleMandatoryRegistration(e, oauthUser));
+        }
+        
+        // Prevenir que el usuario cierre el modal
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay) {
+            overlay.onclick = null; // Deshabilitar click en overlay
+        }
+    }
+
+    // MANEJAR REGISTRO OBLIGATORIO
+    async handleMandatoryRegistration(e, oauthUser) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const userData = Object.fromEntries(formData.entries());
+        
+        // Validar datos
+        const validation = this.validateRegistration(userData);
+        if (!validation.isValid) {
+            this.showNotification(validation.message);
+            return;
+        }
+
+        // Verificar edad
+        if (!this.isAdult(userData.birthdate)) {
+            this.showNotification('Debes ser mayor de 18 años');
+            return;
+        }
+
+        try {
+            // Crear usuario completo con datos OAuth + datos del formulario
+            const completeUserData = {
+                ...oauthUser,
+                ...userData,
+                provider: oauthUser.provider,
+                verified: true,
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+            };
+
+            // Guardar en la base de datos
+            await this.saveUserToDatabase(completeUserData);
+            
+            // Establecer como usuario actual
+            this.currentUser = completeUserData;
+            this.isAuthenticated = true;
+            localStorage.setItem('authToken', 'oauth_token_' + Date.now());
+            localStorage.setItem('userData', JSON.stringify(completeUserData));
+            
+            // Cerrar modal de registro
+            this.closeModal('mandatory-registration-modal');
+            
+            // Actualizar UI
+            this.updateUI();
+            this.updateUserProfile(completeUserData);
+            
+            this.showNotification('¡Registro completado exitosamente!');
+            
+            // OBLIGAR AL USUARIO A CONTINUAR CON EL PROCESO DE COMPRA
+            this.forcePurchaseFlow();
+            
+        } catch (error) {
+            console.error('Error al completar registro:', error);
+            this.showNotification('Error al completar el registro. Intenta de nuevo.');
+        }
+    }
+
+    // GUARDAR USUARIO EN LA BASE DE DATOS
+    async saveUserToDatabase(userData) {
+        try {
+            // Intentar guardar en el servidor primero
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message);
+                }
+                return result.user;
+            } catch (serverError) {
+                console.log('Servidor no disponible, guardando en base de datos local');
+                
+                // Fallback a base de datos local
+                if (this.database) {
+                    return await this.database.addUser(userData);
+                } else {
+                    // Fallback a localStorage
+                    const users = JSON.parse(localStorage.getItem('users')) || [];
+                    users.push(userData);
+                    localStorage.setItem('users', JSON.stringify(users));
+                    return userData;
+                }
+            }
+        } catch (error) {
+            console.error('Error al guardar usuario:', error);
+            throw error;
+        }
+    }
 }
 
 // Funciones globales para compatibilidad
@@ -1077,6 +1426,28 @@ function closeAllModals() {
     });
     document.getElementById('modal-overlay').classList.remove('show');
     document.body.classList.remove('modal-open');
+}
+
+// Funciones para el modal obligatorio de compra
+function startMandatoryPurchase() {
+    // Cerrar modal obligatorio
+    authSystem.closeModal('mandatory-purchase-modal');
+    
+    // Scroll a la primera sección de productos
+    const firstProductSection = document.querySelector('#camisetas');
+    if (firstProductSection) {
+        firstProductSection.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
+    
+    // Mostrar notificación
+    authSystem.showNotification('¡Perfecto! Explora nuestros productos y agrega al menos uno al carrito.');
+}
+
+function closeMandatoryPurchaseModal() {
+    authSystem.closeMandatoryPurchaseModal();
 }
 
 // Inicializar sistema de autenticación

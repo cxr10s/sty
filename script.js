@@ -21,7 +21,7 @@ const authSystem = {
             this.users = JSON.parse(localStorage.getItem('users')) || [];
         }
         
-        await this.checkExistingAuth();
+        this.checkExistingAuth();
         this.setupEventListeners();
     },
     
@@ -163,37 +163,81 @@ const authSystem = {
         try {
             let user;
             
-            // Usar base de datos local primero
-            if (this.database) {
-                const existingUser = await this.database.getUserByEmail(userData.email);
+            // Intentar usar el servidor primero
+            try {
+                const response = await fetch(`/api/users/email/${userData.email}`);
+                const result = await response.json();
                 
-                if (existingUser) {
-                    user = await this.database.updateUser(existingUser.id, {
-                        lastLogin: new Date().toISOString()
+                if (result.success && result.user) {
+                    // Usuario existente - actualizar último login
+                    const updateResponse = await fetch(`/api/users/${result.user.user_id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            lastLogin: new Date().toISOString()
+                        })
                     });
-                    this.showNotification(`¡Bienvenido de nuevo, ${user.name}!`);
-                } else {
-                    user = await this.database.addUser(userData);
-                    this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
-                }
-            } else {
-                // Fallback a localStorage
-                const existingUser = this.users.find(user => user.email === userData.email);
-                
-                if (existingUser) {
-                    user = existingUser;
-                    this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
-                } else {
-                    user = {
-                        ...userData,
-                        id: userData.id,
-                        createdAt: new Date().toISOString(),
-                        orders: []
-                    };
                     
-                    this.users.push(user);
-                    localStorage.setItem('users', JSON.stringify(this.users));
-                    this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                    if (updateResponse.ok) {
+                        user = result.user;
+                        this.showNotification(`¡Bienvenido de nuevo, ${user.name}!`);
+                    }
+                } else {
+                    // Nuevo usuario - crear cuenta en el servidor
+                    const createResponse = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userData)
+                    });
+                    
+                    const createResult = await createResponse.json();
+                    
+                    if (createResult.success) {
+                        user = createResult.user;
+                        this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                    } else {
+                        throw new Error(createResult.message);
+                    }
+                }
+            } catch (serverError) {
+                console.log('Servidor no disponible, usando base de datos local');
+                
+                // Fallback a base de datos local
+                if (this.database) {
+                    const existingUser = await this.database.getUserByEmail(userData.email);
+                    
+                    if (existingUser) {
+                        user = await this.database.updateUser(existingUser.id, {
+                            lastLogin: new Date().toISOString()
+                        });
+                        this.showNotification(`¡Bienvenido de nuevo, ${user.name}!`);
+                    } else {
+                        user = await this.database.addUser(userData);
+                        this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                    }
+                } else {
+                    // Fallback a localStorage
+                    const existingUser = this.users.find(user => user.email === userData.email);
+                    
+                    if (existingUser) {
+                        user = existingUser;
+                        this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
+                    } else {
+                        user = {
+                            ...userData,
+                            id: userData.id,
+                            createdAt: new Date().toISOString(),
+                            orders: []
+                        };
+                        
+                        this.users.push(user);
+                        localStorage.setItem('users', JSON.stringify(this.users));
+                        this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
+                    }
                 }
             }
             
@@ -256,18 +300,43 @@ const authSystem = {
         }
 
         try {
-            // Usar base de datos local
-            if (this.database) {
-                await this.database.addOrder(this.currentUser.id, orderData);
-                this.showNotification('Orden guardada exitosamente');
-            } else {
-                // Fallback a localStorage
-                if (!this.currentUser.orders) {
-                    this.currentUser.orders = [];
+            // Intentar guardar en el servidor primero
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: this.currentUser.id,
+                        orderData: orderData
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.showNotification('Orden guardada exitosamente en el servidor');
+                    return;
+                } else {
+                    throw new Error(result.message);
                 }
-                this.currentUser.orders.push(orderData);
-                localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-                this.showNotification('Orden guardada exitosamente');
+            } catch (serverError) {
+                console.log('Servidor no disponible, usando base de datos local');
+                
+                // Fallback a base de datos local
+                if (this.database) {
+                    await this.database.addOrder(this.currentUser.id, orderData);
+                    this.showNotification('Orden guardada exitosamente');
+                } else {
+                    // Fallback a localStorage
+                    if (!this.currentUser.orders) {
+                        this.currentUser.orders = [];
+                    }
+                    this.currentUser.orders.push(orderData);
+                    localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+                    this.showNotification('Orden guardada exitosamente');
+                }
             }
         } catch (error) {
             console.error('Error al guardar orden:', error);
@@ -282,12 +351,26 @@ const authSystem = {
         }
 
         try {
-            // Usar base de datos local
-            if (this.database) {
-                return await this.database.getUserOrders(this.currentUser.id);
-            } else {
-                // Fallback a localStorage
-                return this.currentUser.orders || [];
+            // Intentar obtener del servidor primero
+            try {
+                const response = await fetch(`/api/users/${this.currentUser.id}/orders`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    return result.orders;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (serverError) {
+                console.log('Servidor no disponible, usando base de datos local');
+                
+                // Fallback a base de datos local
+                if (this.database) {
+                    return await this.database.getUserOrders(this.currentUser.id);
+                } else {
+                    // Fallback a localStorage
+                    return this.currentUser.orders || [];
+                }
             }
         } catch (error) {
             console.error('Error al obtener órdenes:', error);
@@ -1370,28 +1453,38 @@ async function processNequiPayment() {
     // Simular procesamiento
     setTimeout(async () => {
         try {
-            // Guardar orden en la base de datos
-            const orderData = {
-                items: cart.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity
-                })),
-                total: cartTotal,
-                paymentMethod: 'Nequi',
-                paymentNumber: number
-            };
+            // SOLO REGISTRAR TRANSACCIÓN SI EL PAGO ES EXITOSO
+            const paymentSuccess = await simulatePaymentProcessing('Nequi', number);
             
-            await authSystem.saveUserOrder(orderData);
-            
-            showNotification('¡Pago exitoso con Nequi!');
-            closePaymentModal();
-            
-            // Limpiar carrito
-            cart = [];
-            updateCartDisplay();
-            updateCartIcon();
+            if (paymentSuccess) {
+                // Guardar orden en la base de datos SOLO si el pago fue exitoso
+                const orderData = {
+                    items: cart.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    })),
+                    total: cartTotal,
+                    paymentMethod: 'Nequi',
+                    paymentNumber: number,
+                    status: 'completed',
+                    orderDate: new Date().toISOString(),
+                    transactionId: 'nequi_' + Date.now()
+                };
+                
+                await authSystem.saveUserOrder(orderData);
+                
+                showNotification('¡Pago exitoso con Nequi! Transacción registrada.');
+                closePaymentModal();
+                
+                // Limpiar carrito
+                cart = [];
+                updateCartDisplay();
+                updateCartIcon();
+            } else {
+                showNotification('Error en el procesamiento del pago. Intenta de nuevo.');
+            }
         } catch (error) {
             console.error('Error al procesar pago:', error);
             showNotification('Error al procesar el pago');
@@ -1410,32 +1503,60 @@ async function processBancolombiaPayment() {
     // Simular procesamiento
     setTimeout(async () => {
         try {
-            // Guardar orden en la base de datos
-            const orderData = {
-                items: cart.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity
-                })),
-                total: cartTotal,
-                paymentMethod: 'Bancolombia',
-                paymentNumber: number
-            };
+            // SOLO REGISTRAR TRANSACCIÓN SI EL PAGO ES EXITOSO
+            const paymentSuccess = await simulatePaymentProcessing('Bancolombia', number);
             
-            await authSystem.saveUserOrder(orderData);
-            
-            showNotification('¡Pago exitoso con Bancolombia!');
-            closePaymentModal();
-            
-            // Limpiar carrito
-            cart = [];
-            updateCartDisplay();
-            updateCartIcon();
+            if (paymentSuccess) {
+                // Guardar orden en la base de datos SOLO si el pago fue exitoso
+                const orderData = {
+                    items: cart.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity
+                    })),
+                    total: cartTotal,
+                    paymentMethod: 'Bancolombia',
+                    paymentNumber: number,
+                    status: 'completed',
+                    orderDate: new Date().toISOString(),
+                    transactionId: 'bancolombia_' + Date.now()
+                };
+                
+                await authSystem.saveUserOrder(orderData);
+                
+                showNotification('¡Pago exitoso con Bancolombia! Transacción registrada.');
+                closePaymentModal();
+                
+                // Limpiar carrito
+                cart = [];
+                updateCartDisplay();
+                updateCartIcon();
+            } else {
+                showNotification('Error en el procesamiento del pago. Intenta de nuevo.');
+            }
         } catch (error) {
             console.error('Error al procesar pago:', error);
             showNotification('Error al procesar el pago');
         }
     }, 2000);
+}
 
+// SIMULAR PROCESAMIENTO DE PAGO (solo registra si es exitoso)
+async function simulatePaymentProcessing(method, number) {
+    // Simular validación del número
+    if (!number || number.length < 10) {
+        return false;
+    }
+    
+    // Simular probabilidad de éxito (90% de éxito)
+    const success = Math.random() > 0.1;
+    
+    if (success) {
+        console.log(`Pago exitoso con ${method} - Número: ${number}`);
+        return true;
+    } else {
+        console.log(`Pago fallido con ${method} - Número: ${number}`);
+        return false;
+    }
 }

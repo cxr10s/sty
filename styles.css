@@ -302,12 +302,21 @@ body {
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
 }
 
+.product-card:hover img {
+    transform: scale(1.05);
+}
+
 .product-card img {
     width: 100%;
-    height: 200px;
-    object-fit: cover;
+    height: 250px;
+    object-fit: contain;
+    object-position: center;
     border-radius: 10px;
     margin-bottom: 1rem;
+    background: #f8f9fa;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
 }
 
 .product-card h3 {
@@ -489,6 +498,201 @@ body {
     50% { 
         opacity: 1; 
         transform: translateX(-50%) translateY(-5px) scale(1.05); 
+    }
+}
+
+/* Modal Obligatorio de Compra */
+.mandatory-purchase-modal {
+    max-width: 500px;
+    text-align: center;
+}
+
+.mandatory-purchase-content {
+    padding: 2rem;
+}
+
+.purchase-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: bounce 2s infinite;
+}
+
+.mandatory-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.mandatory-subtext {
+    color: #666;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+.mandatory-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.mandatory-actions .btn-primary {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.mandatory-actions .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+}
+
+.mandatory-actions .btn-secondary {
+    background: transparent;
+    color: #4ecdc4;
+    border: 2px solid #4ecdc4;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.mandatory-actions .btn-secondary:hover {
+    background: #4ecdc4;
+    color: white;
+    transform: translateY(-2px);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Modal de Registro Obligatorio */
+.mandatory-registration-modal {
+    max-width: 600px;
+    text-align: center;
+}
+
+.mandatory-registration-content {
+    padding: 2rem;
+}
+
+.registration-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: pulse 2s infinite;
+}
+
+.mandatory-registration-content .mandatory-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.mandatory-registration-content .mandatory-subtext {
+    color: #666;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+.mandatory-registration-content .auth-form {
+    text-align: left;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.mandatory-registration-content .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.mandatory-registration-content .form-group {
+    flex: 1;
+    margin-bottom: 1rem;
+}
+
+.mandatory-registration-content .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.mandatory-registration-content .form-group input,
+.mandatory-registration-content .form-group select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.mandatory-registration-content .form-group input:focus,
+.mandatory-registration-content .form-group select:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+}
+
+.mandatory-registration-content .form-group input[readonly] {
+    background-color: #f5f5f5;
+    color: #666;
+}
+
+.mandatory-registration-content .mandatory-actions {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.mandatory-registration-content .mandatory-actions .btn-primary {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    min-width: 200px;
+}
+
+.mandatory-registration-content .mandatory-actions .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
     }
 }
 
@@ -717,9 +921,13 @@ html {
 .cart-item img {
     width: 60px;
     height: 60px;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     border-radius: 8px;
     margin-right: 1rem;
+    background: #f8f9fa;
+    padding: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .cart-item-info {
@@ -1182,10 +1390,19 @@ html {
 
 .catalog-item img {
     width: 100%;
-    height: 150px;
-    object-fit: cover;
+    height: 180px;
+    object-fit: contain;
+    object-position: center;
     border-radius: 8px;
     margin-bottom: 0.5rem;
+    background: #f8f9fa;
+    padding: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.catalog-item:hover img {
+    transform: scale(1.02);
 }
 
 .catalog-item h4 {
@@ -1260,6 +1477,12 @@ html {
     background: linear-gradient(45deg, #1565c0, #1976d2);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(24, 119, 242, 0.3);
+}
+
+.facebook-btn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 /* Avatar del usuario */
