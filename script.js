@@ -21,7 +21,7 @@ const authSystem = {
             this.users = JSON.parse(localStorage.getItem('users')) || [];
         }
         
-        this.checkExistingAuth();
+        await this.checkExistingAuth();
         this.setupEventListeners();
     },
     
@@ -163,18 +163,16 @@ const authSystem = {
         try {
             let user;
             
+            // Usar base de datos local primero
             if (this.database) {
-                // Usar base de datos IndexedDB
                 const existingUser = await this.database.getUserByEmail(userData.email);
                 
                 if (existingUser) {
-                    // Usuario existente - actualizar último login
                     user = await this.database.updateUser(existingUser.id, {
                         lastLogin: new Date().toISOString()
                     });
                     this.showNotification(`¡Bienvenido de nuevo, ${user.name}!`);
                 } else {
-                    // Nuevo usuario - crear cuenta en la base de datos
                     user = await this.database.addUser(userData);
                     this.showNotification(`¡Cuenta creada exitosamente con ${provider}!`);
                 }
@@ -183,11 +181,9 @@ const authSystem = {
                 const existingUser = this.users.find(user => user.email === userData.email);
                 
                 if (existingUser) {
-                    // Usuario existente - hacer login
                     user = existingUser;
                     this.showNotification(`¡Bienvenido de nuevo, ${existingUser.name}!`);
                 } else {
-                    // Nuevo usuario - crear cuenta
                     user = {
                         ...userData,
                         id: userData.id,
@@ -260,6 +256,7 @@ const authSystem = {
         }
 
         try {
+            // Usar base de datos local
             if (this.database) {
                 await this.database.addOrder(this.currentUser.id, orderData);
                 this.showNotification('Orden guardada exitosamente');
@@ -285,6 +282,7 @@ const authSystem = {
         }
 
         try {
+            // Usar base de datos local
             if (this.database) {
                 return await this.database.getUserOrders(this.currentUser.id);
             } else {
