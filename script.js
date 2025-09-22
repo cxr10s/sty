@@ -804,7 +804,7 @@ function updateCartIcon() {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            background: linear-gradient(45deg, rgb(113, 45, 45), rgb(50, 30, 30));
             color: white;
             width: 60px;
             height: 60px;
